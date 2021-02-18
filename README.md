@@ -32,7 +32,7 @@ You can register a number by selecting one of the available numbers as shown bel
 2. Get the messages from any registered number:
 You can select a number which was saved in step-1 and view its messages as a list. The tool will also save the dump as json in the format `${PWD}/selected-phone-number.json`. As shown below:
 
-![get-messages]('./gifs/messages.gif)
+![get-messages](./gifs/messages.gif)
 
 3. Optionally, you can choose to delete the rembered numbers or list them.
 
