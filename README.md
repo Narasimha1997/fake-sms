@@ -3,7 +3,7 @@ A simple command line tool using which you can skip phone number based SMS verif
 
 **Note-1: This is just an experimental tool, do not use this in any banking transactions. Unethical use of this tool is strictly not encouraged."**
 
-**Note-2: The tool uses upmasked, An Eurpoean service provider, data will be stored on their servers, make sure you agree to EU Data governance laws and GDPR. I recommend you not to use this for any personal transaction which reveals your identity.** 
+**Note-2: The tool uses upmasked, A Eurpoean service provider, data will be stored on their servers, make sure you agree to EU Data governance laws and GDPR. I recommend you not to use this for any personal transaction which reveals your identity.** 
 
 ### Features:
 * Written in Go-1.15 (with modules support enabled)
