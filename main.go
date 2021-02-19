@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/manifoldco/promptui"
 )
@@ -290,7 +291,25 @@ func removeNumbers() {
 	}
 }
 
-func checkMessages() {
+func messagePatternCheck(pattern *string, messages *Messages) Messages {
+	r, err := regexp.Compile(*pattern)
+	if err != nil {
+		log.Fatalln("Invalid regular expression provided")
+	}
+
+	filteredMessages := make([]Message, 0)
+	for _, message := range *messages {
+		//check match
+		isMatch := r.Match([]byte(message.Body))
+		if isMatch {
+			filteredMessages = append(filteredMessages, message)
+		}
+	}
+
+	return Messages(filteredMessages)
+}
+
+func checkMessages(enableFilter bool) {
 	db := DB{}
 	numbers := db.getFromDB()
 
@@ -337,6 +356,16 @@ func checkMessages() {
 			log.Fatalf("Failed to de-serialize response body")
 		}
 
+		//run filter if enabled:
+		if enableFilter {
+			fmt.Println("Enter the filter regular expression:")
+			filterString := `*`
+			fmt.Scanln(&filterString)
+
+			//run the filter
+			messages = messagePatternCheck(&filterString, &messages)
+		}
+
 		fmt.Println("===========================================")
 		for _, message := range messages {
 			fmt.Printf("Sender : %s, at : %s\n", message.Originator, message.CreatedAt)
@@ -355,6 +384,24 @@ func checkMessages() {
 	}
 }
 
+func shouldIncludeFilter() bool {
+	prompt := promptui.Select{
+		Label: "Do you want to filter the messages?",
+		Items: []string{"Yes", "No"},
+	}
+
+	idx, _, err := prompt.Run()
+	if err != nil {
+		log.Fatalln("Failed to render prompt")
+	}
+
+	if idx == 0 {
+		return true
+	}
+
+	return false
+}
+
 func main() {
 
 	for true {
@@ -371,7 +418,9 @@ func main() {
 			removeNumbers()
 			break
 		case 3:
-			checkMessages()
+			//check if filter needs to be enabled
+			includeFilter := shouldIncludeFilter()
+			checkMessages(includeFilter)
 			break
 		case 4:
 			fmt.Println("Bye!")
