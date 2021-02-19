@@ -359,11 +359,15 @@ func checkMessages(enableFilter bool) {
 		//run filter if enabled:
 		if enableFilter {
 			fmt.Println("Enter the filter regular expression:")
-			filterString := `*`
-			fmt.Scanln(&filterString)
+			userFilterInput := ""
+
+			fmt.Scanln(&userFilterInput)
+			if userFilterInput == "" {
+				userFilterInput = `.*`
+			}
 
 			//run the filter
-			messages = messagePatternCheck(&filterString, &messages)
+			messages = messagePatternCheck(&userFilterInput, &messages)
 		}
 
 		fmt.Println("===========================================")
