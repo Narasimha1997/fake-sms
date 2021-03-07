@@ -5,23 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 
 	"github.com/manifoldco/promptui"
-)
-
-const (
-	//APIUrl : URL of the API
-	APIUrl = "https://upmasked.com"
-
-	//RegisterRoute : Can register new phone-numbers with this route
-	RegisterRoute = "/api/sms/numbers"
-
-	//QueryRoute : Can query SMS given the message
-	QueryRoute = "/api/sms/messages/"
 )
 
 //Number A struct that represents a new number to be addeded
@@ -192,27 +180,9 @@ func displayInitParameters() int {
 }
 
 func getAvailNumbers() *Numbers {
-	uri := APIUrl + RegisterRoute
-	response, err := http.Get(uri)
-	if err != nil {
-		exitFatal(err)
-	}
 
-	defer response.Body.Close()
-
-	//read the body and marshall
-	respBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		exitFatal(err)
-	}
-
-	numbers := Numbers{}
-
-	err = json.Unmarshal(respBytes, &numbers)
-	if err != nil {
-		exitFatal(err)
-	}
-
+	numArray := ScrapeAvailableNumbers()
+	numbers := Numbers(numArray)
 	return &numbers
 }
 
@@ -250,11 +220,11 @@ func listNumbers() {
 	db := DB{}
 	numbers := db.getFromDB()
 
-	fmt.Println("Country\t\t\tNumber\t\t\tCreated At")
+	fmt.Println("Country\t\tNumber\t\tCreated At")
 	fmt.Println("=======================================================================")
 	for _, number := range *numbers {
 		fmt.Printf(
-			"%s\t\t\t%s\t\t%s\n",
+			"%s\t\t%s\t\t%s\n",
 			number.Country, number.Number, number.CreatedAt,
 		)
 	}
@@ -310,6 +280,7 @@ func messagePatternCheck(pattern *string, messages *Messages) Messages {
 }
 
 func checkMessages(enableFilter bool) {
+
 	db := DB{}
 	numbers := db.getFromDB()
 
@@ -337,24 +308,10 @@ func checkMessages(enableFilter bool) {
 		selectedNumber := &(*numbers)[idx]
 		fmt.Printf("Selected %s, fetching messages\n", selectedNumber)
 
+		messagesArray := ScrapeMessagesForNumber(selectedNumber.Number)
+
 		//check message
-		url := APIUrl + QueryRoute + selectedNumber.Number
-		resp, err := http.Get(url)
-		if err != nil {
-			log.Fatalf("Failed to make GET request %s\n", url)
-		}
-
-		defer resp.Body.Close()
-		data, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatalf("Failed to decode response")
-		}
-
-		messages := Messages{}
-		err = json.Unmarshal(data, &messages)
-		if err != nil {
-			log.Fatalf("Failed to de-serialize response body")
-		}
+		messages := Messages(messagesArray)
 
 		//run filter if enabled:
 		if enableFilter {
@@ -407,6 +364,8 @@ func shouldIncludeFilter() bool {
 }
 
 func main() {
+
+	ScrapeAvailableNumbers()
 
 	for true {
 		idx := displayInitParameters()
