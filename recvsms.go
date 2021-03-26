@@ -75,7 +75,17 @@ func ScrapeMessagesForNumber(number string) []Message {
 
 	document := soup.HTMLParse(response)
 
-	tableRows := document.Find("table").Find("tbody").FindAll("tr")
+	table := document.Find("table")
+	if table.Error != nil {
+		log.Fatalln("Failed to load messages")
+	}
+
+	tbody := table.Find("tbody")
+	if tbody.Error != nil {
+		log.Fatalln("Failed to load messages")
+	}
+
+	tableRows := tbody.FindAll("tr")
 
 	messages := make([]Message, 0)
 
