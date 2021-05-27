@@ -97,8 +97,8 @@ func ScrapeMessagesForNumber(number string) []Message {
 
 		message := Message{
 			Originator: cols[1].FullText(),
-			Body:       cols[3].FullText(),
-			CreatedAt:  cols[4].FullText(),
+			Body:       cols[4].FullText(),
+			CreatedAt:  cols[3].FullText(),
 		}
 
 		messages = append(messages, message)
