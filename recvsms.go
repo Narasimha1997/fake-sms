@@ -71,7 +71,7 @@ func ScrapeMessagesForNumber(number string) []Message {
 	requestURL := pageURL + smsEndpoint + strings.ReplaceAll(number, "+", "") + "/"
 
 	//make GET with soup:
-	response, err := soup.Get(requestURL)
+	response, _ := soup.Get(requestURL)
 
 	document := soup.HTMLParse(response)
 
@@ -91,14 +91,15 @@ func ScrapeMessagesForNumber(number string) []Message {
 
 	for _, row := range tableRows {
 		cols := row.FindAll("td")
-		if len(cols) < 6 {
+
+		if len(cols) < 3 {
 			continue
 		}
 
 		message := Message{
-			Originator: cols[1].FullText(),
-			Body:       cols[4].FullText(),
-			CreatedAt:  cols[3].FullText(),
+			Originator: cols[0].FullText(),
+			Body:       cols[1].FullText(),
+			CreatedAt:  cols[2].FullText(),
 		}
 
 		messages = append(messages, message)
