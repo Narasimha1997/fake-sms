@@ -71,7 +71,10 @@ func ScrapeMessagesForNumber(number string) []Message {
 	requestURL := pageURL + smsEndpoint + strings.ReplaceAll(number, "+", "") + "/"
 
 	//make GET with soup:
-	response, _ := soup.Get(requestURL)
+	response, err := soup.Get(requestURL)
+	if err != nil {
+		log.Fatalf("error fetching data: %s", err.Error())
+	}
 
 	document := soup.HTMLParse(response)
 
