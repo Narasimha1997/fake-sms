@@ -26,9 +26,10 @@ func ScrapeAvailableNumbers() []Number {
 
 	//scrape the page
 	document := soup.HTMLParse(response)
-	numberBoxes := document.Find("div", "class", "number-boxes").FindAllStrict(
-		"div", "class", "number-boxes-item d-flex flex-column ",
-	)
+
+	numbersContainer := document.Find("div", "class", "number-boxes")
+
+	numberBoxes := numbersContainer.FindAll("div", "class", "number-boxes-item")
 
 	for _, numberBox := range numberBoxes {
 		numberElement := numberBox.FindStrict("div", "class", "row")
