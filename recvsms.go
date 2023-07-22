@@ -34,8 +34,9 @@ func ScrapeAvailableNumbers() []Number {
 	for _, numberBox := range numberBoxes {
 		numberElement := numberBox.FindStrict("div", "class", "row")
 		if numberElement.Error == nil {
-			numberContainer := numberElement.FindStrict("h4")
-			countryContainer := numberElement.FindStrict("h5")
+			numberContainer := numberElement.FindStrict("div", "class", "number-boxes-itemm-number")
+			countryContainer := numberContainer.FindNextElementSibling()
+
 			if numberContainer.Error == nil && countryContainer.Error == nil {
 				number := Number{
 					CreatedAt: time.Now().Format("2006-01-02 15:04:05 Monday"),
@@ -96,14 +97,14 @@ func ScrapeMessagesForNumber(number string) []Message {
 	for _, row := range tableRows {
 		cols := row.FindAll("td")
 
-		if len(cols) < 3 {
+		if len(cols) < 6 {
 			continue
 		}
 
 		message := Message{
-			Originator: cols[0].FullText(),
-			Body:       cols[1].FullText(),
-			CreatedAt:  cols[2].FullText(),
+			Originator: cols[3].FullText(),
+			Body:       cols[4].FullText(),
+			CreatedAt:  cols[5].FullText(),
 		}
 
 		messages = append(messages, message)
