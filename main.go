@@ -12,31 +12,86 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-//Number A struct that represents a new number to be addeded
+// Country A struct that represents a new country to be addeded
+type Country struct {
+	Country int    `json:"country"`
+	Name    string `json:"name"`
+	Online  bool   `json:"online"`
+	Locale  string `json:"locale"`
+}
+
+type Response struct {
+	Response  string    `json:"response"`
+	Countries []Country `json:"counties"`
+}
+
+// Number A struct that represents a new number to be addeded
 type Number struct {
-	Country   string `json:"country"`
-	Number    string `json:"number"`
-	CreatedAt string `json:"created_at"`
+	Country    int    `json:"country"`
+	DataHumans string `json:"data_humans"`
+	FullNumber string `json:"full_number"`
+	Number     string `json:"number"`
+	Code       string `json:"code"`
+	IsArchive  bool   `json:"is_archive"`
 }
 
-//Message a struct which represents the message
+type ResponseNumbers struct {
+	Response string   `json:"response"`
+	Code     int      `json:"code"`
+	Numbers  []Number `json:"numbers"`
+}
+
+// Message a struct which represents the message
 type Message struct {
-	Body       string `json:"body"`
+	Text       string `json:"text"`
+	InNumber   string `json:"in_number"`
+	MyNumber   int    `json:"my_number"`
 	CreatedAt  string `json:"created_at"`
-	Originator string `json:"originator"`
+	DataHumans string `json:"data_humans"`
+	Code       string `json:"code"`
 }
 
-//Numbers A list of Number type
+type MessagesResponse struct {
+	Response     int         `json:"response"`
+	Messages     Msg         `json:"messages"`
+	CurrentPage  int         `json:"current_page"`
+	FirstPageURL string      `json:"first_page_url"`
+	From         int         `json:"from"`
+	LastPage     int         `json:"last_page"`
+	LastPageURL  string      `json:"last_page_url"`
+	Links        []Link      `json:"links"`
+	NextPageURL  string      `json:"next_page_url"`
+	Path         string      `json:"path"`
+	PerPage      int         `json:"per_page"`
+	PrevPageURL  interface{} `json:"prev_page_url"`
+	To           int         `json:"to"`
+	Total        int         `json:"total"`
+}
+
+type Msg struct {
+	CurrentPage int       `json:"current_page"`
+	Data        []Message `json:"data"`
+}
+
+type Link struct {
+	URL    string `json:"url"`
+	Label  string `json:"label"`
+	Active bool   `json:"active"`
+}
+
+type Countries []Country
+
+// Numbers A list of Number type
 type Numbers []Number
 
-//Messages A list of Message type
+// Messages A list of Message type
 type Messages []Message
 
 func exitFatal(err error) {
 	log.Fatal(err)
 }
 
-//DB The database functions group
+// DB The database functions group
 type DB struct {
 }
 
@@ -156,10 +211,18 @@ func (d *DB) deleteFromDB(idx *int) {
 	}
 }
 
+func countriesToList(countries *Countries) *[]string {
+	listOfCountries := make([]string, len(*countries))
+	for idx, country := range *countries {
+		listOfCountries[idx] = fmt.Sprintf("%s (%d)", country.Name, country.Country)
+	}
+	return &listOfCountries
+}
+
 func numbersToList(numbers *Numbers) *[]string {
 	listOfNumbers := make([]string, len(*numbers))
 	for idx, number := range *numbers {
-		listOfNumbers[idx] = fmt.Sprintf("%s (%s)", number.Number, number.Country)
+		listOfNumbers[idx] = fmt.Sprintf("%s (%d)", number.Code, number.Country)
 	}
 	return &listOfNumbers
 }
@@ -179,53 +242,97 @@ func displayInitParameters() int {
 	return idx
 }
 
-func getAvailNumbers() *Numbers {
+func getAvailCountries() *Countries {
+	counriesArray := ScrapeAvailableCountries()
+	countries := Countries(counriesArray)
+	return &countries
+}
 
-	numArray := ScrapeAvailableNumbers()
+func listCountries() {
+	countries := getAvailCountries()
+
+	fmt.Println("Name\t\tCode")
+	fmt.Println("=======================================================================")
+	for _, country := range *countries {
+		fmt.Printf(
+			"%s\t\t%n\n",
+			country.Name, country.Country,
+		)
+	}
+}
+
+func getAvailNumbers(country string) *Numbers {
+	numArray := ScrapeAvailableNumbers(country)
 	numbers := Numbers(numArray)
 	return &numbers
 }
 
 func registerNumber() {
-	numbers := getAvailNumbers()
+	countries := getAvailCountries()
 
-	if len(*numbers) == 0 {
-		fmt.Println("No new numbers available right now")
+	if len(*countries) == 0 {
+		fmt.Println("No new countries available right now")
 	} else {
-		numberList := numbersToList(numbers)
+		countriesList := countriesToList(countries)
 		//display numbers
 		prompt := promptui.Select{
-			Label: "These are the available numbers, choose any one of them",
-			Items: *numberList,
+			Label: "These are the available countries, choose any one of them",
+			Items: *countriesList,
 		}
 
-		idx, _, err := prompt.Run()
+		code, _, err := prompt.Run()
 		if err != nil {
 			exitFatal(err)
 		}
 
-		if idx == -1 {
+		if code == -1 {
 			fmt.Println("Nothing selected")
 		} else {
 			//new number selected, save it to the database file
-			selectedNumber := &(*numbers)[idx]
-			fmt.Printf("Selected %s, saving to database\n", selectedNumber)
-			db := DB{}
-			db.addToDB(selectedNumber)
+			selectedCountry := &(*countries)[code]
+
+			numbers := getAvailNumbers(selectedCountry.Name)
+
+			if len(*numbers) == 0 {
+				fmt.Println("No new numbers available right now")
+			} else {
+				numberList := numbersToList(numbers)
+				//display numbers
+				prompt := promptui.Select{
+					Label: "These are the available numbers, choose any one of them",
+					Items: *numberList,
+				}
+
+				idx, _, err := prompt.Run()
+				if err != nil {
+					exitFatal(err)
+				}
+
+				if idx == -1 {
+					fmt.Println("Nothing selected")
+				} else {
+					//new number selected, save it to the database file
+					selectedNumber := &(*numbers)[idx]
+					fmt.Printf("Selected %s, saving to database\n", selectedNumber)
+					db := DB{}
+					db.addToDB(selectedNumber)
+				}
+			}
 		}
 	}
+
 }
 
 func listNumbers() {
 	db := DB{}
 	numbers := db.getFromDB()
 
-	fmt.Println("Country\t\tNumber\t\tCreated At")
+	fmt.Println("Country\t\tNumber\t\tData Humans")
 	fmt.Println("=======================================================================")
 	for _, number := range *numbers {
 		fmt.Printf(
-			"%s\t\t%s\t\t%s\n",
-			number.Country, number.Number, number.CreatedAt,
+			"%d\t\t%s\t\t%s\n",
+			number.Country, number.Number, number.DataHumans,
 		)
 	}
 }
@@ -270,7 +377,7 @@ func messagePatternCheck(pattern *string, messages *Messages) Messages {
 	filteredMessages := make([]Message, 0)
 	for _, message := range *messages {
 		//check match
-		isMatch := r.Match([]byte(message.Body))
+		isMatch := r.Match([]byte(message.Text))
 		if isMatch {
 			filteredMessages = append(filteredMessages, message)
 		}
@@ -306,9 +413,9 @@ func checkMessages(enableFilter bool) {
 	} else {
 		//new number selected, save it to the database file
 		selectedNumber := &(*numbers)[idx]
-		fmt.Printf("Selected %s, fetching messages\n", selectedNumber)
+		fmt.Printf("Selected %s, fetching messages\n", selectedNumber.FullNumber)
 
-		messagesArray := ScrapeMessagesForNumber(selectedNumber.Number)
+		messagesArray := ScrapeMessagesForNumber(selectedNumber.Country, selectedNumber.Number)
 
 		//check message
 		messages := Messages(messagesArray)
@@ -329,8 +436,8 @@ func checkMessages(enableFilter bool) {
 
 		fmt.Println("===========================================")
 		for _, message := range messages {
-			fmt.Printf("Sender : %s, at : %s\n", message.Originator, message.CreatedAt)
-			fmt.Printf("Body : %s\n", message.Body)
+			fmt.Printf("Sender : %s, at : %s\n", message.InNumber, message.CreatedAt)
+			fmt.Printf("Body : %s\n", message.Text)
 			fmt.Println("===========================================")
 		}
 
@@ -364,9 +471,6 @@ func shouldIncludeFilter() bool {
 }
 
 func main() {
-
-	ScrapeAvailableNumbers()
-
 	for true {
 		idx := displayInitParameters()
 
