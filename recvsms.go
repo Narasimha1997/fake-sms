@@ -1,113 +1,91 @@
 package main
 
 import (
-	"log"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
-	"strings"
-	"time"
-
-	"github.com/anaskhan96/soup"
 )
 
 const (
-	pageURL     = "https://receive-smss.com/"
-	cookieName  = "__cfduid"
-	smsEndpoint = "sms/"
+	pageURL = "https://onlinesim.io/"
 )
 
-//ScrapeAvailableNumbers Extracts the list of phone-numbers from the page
-func ScrapeAvailableNumbers() []Number {
-	response, err := soup.Get(pageURL)
+func ScrapeAvailableCountries() []Country {
+	apiURL := fmt.Sprintf("%sapi/v1/free_numbers_content/countries", pageURL)
+	resp, err := http.Get(apiURL)
 	if err != nil {
-		log.Fatalf("Failed to make HTTP request to %s\n", pageURL)
+		fmt.Println("Error:", err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
 	}
 
-	numbers := make([]Number, 0)
-
-	//scrape the page
-	document := soup.HTMLParse(response)
-
-	numbersContainer := document.Find("div", "class", "number-boxes")
-
-	numberBoxes := numbersContainer.FindAll("div", "class", "number-boxes-item")
-
-	for _, numberBox := range numberBoxes {
-		numberElement := numberBox.FindStrict("div", "class", "row")
-		if numberElement.Error == nil {
-			numberContainer := numberElement.FindStrict("h4")
-			countryContainer := numberElement.FindStrict("h5")
-			if numberContainer.Error == nil && countryContainer.Error == nil {
-				number := Number{
-					CreatedAt: time.Now().Format("2006-01-02 15:04:05 Monday"),
-					Number:    numberContainer.Text(),
-					Country:   countryContainer.Text(),
-				}
-
-				numbers = append(numbers, number)
-			}
-		}
+	var data Response
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
 	}
 
-	return numbers
+	return data.Countries
 }
 
-//ScrapeMessagesForNumber GET SMS from number
-func ScrapeMessagesForNumber(number string) []Message {
-	//Get cookie first
-	resp, err := http.Get(pageURL)
+// ScrapeAvailableNumbers Extracts the list of phone-numbers from the page
+func ScrapeAvailableNumbers(code string) []Number {
+	apiURL := fmt.Sprintf("%sapi/v1/free_numbers_content/countries/%s", pageURL, code)
+
+	resp, err := http.Get(apiURL)
 	if err != nil {
-		log.Fatalln("Failed to make GET request")
+		fmt.Println("Error:", err)
+		return nil
 	}
+	defer resp.Body.Close()
 
-	cookies := resp.Cookies()
-	cookieValue := ""
-	for _, cookie := range cookies {
-		if cookie.Name == cookieName {
-			cookieValue = cookie.Value
-		}
-	}
-
-	//now use that value to set the cookie in soup
-	soup.Cookie(cookieName, cookieValue)
-	requestURL := pageURL + smsEndpoint + strings.ReplaceAll(number, "+", "") + "/"
-
-	//make GET with soup:
-	response, err := soup.Get(requestURL)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("error fetching data: %s", err.Error())
+		fmt.Println("Error:", err)
+		return nil
 	}
 
-	document := soup.HTMLParse(response)
-
-	table := document.Find("table")
-	if table.Error != nil {
-		log.Fatalln("Failed to load messages")
+	var data ResponseNumbers
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
 	}
 
-	tbody := table.Find("tbody")
-	if tbody.Error != nil {
-		log.Fatalln("Failed to load messages")
+	return data.Numbers
+}
+
+// ScrapeMessagesForNumber GET SMS from number
+func ScrapeMessagesForNumber(countryCode int, number string) []Message {
+	apiURL := fmt.Sprintf("%sapi/getFreeMessageList?&phone=%s&country=%d", pageURL, number, countryCode)
+
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
 	}
 
-	tableRows := tbody.FindAll("tr")
-
-	messages := make([]Message, 0)
-
-	for _, row := range tableRows {
-		cols := row.FindAll("td")
-
-		if len(cols) < 3 {
-			continue
-		}
-
-		message := Message{
-			Originator: cols[0].FullText(),
-			Body:       cols[1].FullText(),
-			CreatedAt:  cols[2].FullText(),
-		}
-
-		messages = append(messages, message)
+	var data MessagesResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
 	}
 
-	return messages
+	return data.Messages.Data
 }
